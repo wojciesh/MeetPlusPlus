@@ -1,131 +1,162 @@
 function videoControl() {
-  // config  
-  const useShiftAlt = true
-  const useStopKeyPropagation = true
+  const config = {
+    // command keys options:
+    useShiftAlt: false,           // Shift + Alt has to be pressed with the command key
+    useStopKeyPropagation: false, // Stop command key propagation if consumed
+
+    // video control parameters:
+    deltaPan: 1,      // panning delta (position is <-100%, 100> in both axes)
+    deltaZoom: 0.1,   // zooming delta (zoom is a multiplier in range <deltaZoom, ...>)
+    fastZoomMul: 3.0  // deltaZoom multiplier for fast zooming
+  }
   
-  // all messages:
-  const msgNoVideo = "No presentation found"
-  const msgNoVisibleVideo = "No visible presentation found"
-  const msgNoFullscreen = "Error: Can't make full-screen"
+  // all messages
+  const messages = {
+    noVideo: "No presentation found",
+    noVisibleVideo: "No visible presentation found",
+    noFullscreen: "Error: Can't make full-screen",
+  }
   
-  // panning delta (in %):
-  const deltaPan = 1
-  // zooming delta (in %):
-  const deltaZoom = 0.1
+  // all video control keys and functions
+  // !controller keys are UPPERCASE!
+  // !func returns bool. Returning true updates video element style.
+  const controller = {
+    panUp: {
+      key: 'W',
+      func: () => {
+        window.video_transform.panY += config.deltaPan
+        window.video_transform.panY = Math.min(100, window.video_transform.panY)
+        return true // return true - update element style
+      }},
+
+    panDown: {
+      key: 'S',
+      func: () => {
+        window.video_transform.panY -= config.deltaPan
+        window.video_transform.panY = Math.max(-100, window.video_transform.panY)
+        return true // return true - update element style
+      }},
+    
+    panLeft: {
+      key: 'A',
+      func: () => {
+        window.video_transform.panX += config.deltaPan
+        window.video_transform.panX = Math.min(100, window.video_transform.panX)
+        return true // return true - update element style
+      }},
+
+    panRight: {
+      key: 'D',
+      func: () => {
+        window.video_transform.panX -= config.deltaPan
+        window.video_transform.panX = Math.max(-100, window.video_transform.panX)
+        return true // return true - update element style
+      }},
+
+    zoomInFast: {
+      key: '+',
+      func: () => {
+        window.video_transform.zoom += config.deltaZoom * config.fastZoomMul
+        return true // return true - update element style
+      }},
+
+    zoomIn: {
+      key: 'E',
+      func: () => {
+        window.video_transform.zoom += config.deltaZoom
+        return true // return true - update element style
+      }},
+
+    zoomOutFast: {
+      key: '-',
+      func: () => {
+        window.video_transform.zoom -= config.deltaZoom * config.fastZoomMul
+        window.video_transform.zoom = Math.max(config.deltaZoom, window.video_transform.zoom)
+        return true // return true - update element style
+      }},
+
+    zoomOut: {
+      key: 'Q',
+      func: () => {
+        window.video_transform.zoom -= config.deltaZoom
+        window.video_transform.zoom = Math.max(config.deltaZoom, window.video_transform.zoom)
+        return true // return true - update element style
+      }},
+
+    reset: {
+      key: 'R',
+      func: () => {
+        resetValues()
+        return true // return true - update element style
+      }},
+
+    fullscreen: {
+      key: 'F',
+      func: () => {
+        // full-screen on/off
+        if (!isFullscreen(videoElement)) {
+          try {
+            videoElement.requestFullscreen()
+          } catch {
+            console.log(messages.noFullscreen)
+          }
+        } else {
+          document.exitFullscreen()
+        }
+        return false  // return false - do NOT update element style
+      }},
+  }
   
-  // only one instance 
-  if (!!window.video_transform) return
 
   // init
   resetValues()
 
   // get all videos
   const videos = document.getElementsByTagName("video")
-  let noVideo = !(!!videos && videos.length > 0)
-  if (noVideo) {
-    console.log(msgNoVideo)
+  if (!(!!videos && videos.length > 0)) {
+    console.log(messages.noVideo)
     return
   }
   
-  // all logic is in the keys handler
+  // add global key listener
   document.addEventListener('keydown', function(event) {
     event = event || window.event
     
-    if (useShiftAlt && !(event.altKey && event.shiftKey)) return
+    if (config.useShiftAlt && !(event.altKey && event.shiftKey)) return
 
     // control only visible videos
-    noVideo = true
+    let noVisVideo = true
     for (const v of videos) {
       if (isVisible(v)) {
         if (doCommandOnVideo(v, event.key)) {
           stopKeyPropagation(event)
         }
-        noVideo = false
+        noVisVideo = false
       }
     }
 
-    if (noVideo) console.log(msgNoVisibleVideo)
+    if (noVisVideo) console.log(messages.noVisibleVideo)
   })
 
   function doCommandOnVideo(videoElement, cmdKey) {
-      let changeStyle = true
-
-      switch (`${cmdKey}`.toUpperCase()) {
-        case 'S':
-          // pan down
-          window.video_transform.panY -= deltaPan
-          window.video_transform.panY = Math.max(-100, window.video_transform.panY)
-          break
-        case 'W':
-          // pan up
-          window.video_transform.panY += deltaPan
-          window.video_transform.panY = Math.min(100, window.video_transform.panY)
-          break
-        case 'D':
-          // pan left
-          window.video_transform.panX -= deltaPan
-          window.video_transform.panX = Math.max(-100, window.video_transform.panX)
-          break
-        case 'A':
-          // pan right
-          window.video_transform.panX += deltaPan
-          window.video_transform.panX = Math.min(100, window.video_transform.panX)
-          break
-
-        case '+':
-          // fast zoom-in
-          window.video_transform.zoom += deltaZoom * 3.0
-          break
-        case 'E':
-          // zoom-in
-          window.video_transform.zoom += deltaZoom
-          break
-
-        case '-':
-          // fast zoom-out
-          window.video_transform.zoom -= deltaZoom * 3.0
-          window.video_transform.zoom = Math.max(deltaZoom, window.video_transform.zoom)
-          break
-        case 'Q':
-          // zoom-out
-          window.video_transform.zoom -= deltaZoom
-          window.video_transform.zoom = Math.max(deltaZoom, window.video_transform.zoom)
-          break
-
-        case "R":
-          // reset to defaults
-          resetValues()
-          break
-
-        case 'F':
-          // full-screen on/off
-          if (!isFullscreen(videoElement)) {
-            try {
-              videoElement.requestFullscreen()
-            } catch {
-              console.log(msgNoFullscreen)
-            }
-          } else {
-            document.exitFullscreen()
-          }
-          changeStyle = false
-          break
-        // case "ESCAPE":
-        //   // full-screen off
-        //   document.exitFullscreen()
-        //   changeStyle = false
-        //   break
-
-        default:
-          changeStyle = false
-          break
-      }
-
-      if (changeStyle) {
+      let isKeyConsumed = false
+      cmdKey = `${cmdKey}`.toUpperCase()
+      
+      let updateStyle = false
+      // loop thru keys and invoke func on first key matching pressed key, then break
+      Object.entries(controller).every((obj) => {
+        if (cmdKey === obj[1].key) {
+          updateStyle = obj[1].func()
+          isKeyConsumed = true
+          return false      // break
+        } else return true  // continue
+      })
+      
+      if (updateStyle) {
         videoElement.style.transform = `scale(${window.video_transform.zoom}) translate(${window.video_transform.panX}%, ${window.video_transform.panY}%)`
       }
 
-      return changeStyle
+      return isKeyConsumed
   }
 
   // reset video transform values
@@ -209,7 +240,7 @@ function videoControl() {
   }
   
   function stopKeyPropagation(event) {
-    if (!useStopKeyPropagation) return
+    if (!config.useStopKeyPropagation) return
 
     event.preventDefault()
     if (!!event.stopImmediatePropagation) event.stopImmediatePropagation()
