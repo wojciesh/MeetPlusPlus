@@ -1,7 +1,11 @@
 function videoControl() {
   const config = {
+    appName: 'Meet++',
+    appNameCanonical: 'MeetPlusPlus',
+    attrName: `data-MeetPlusPlus-selected`,
+
     // command keys options:
-    useShiftAlt: false,           // Shift + Alt has to be pressed with the command key
+    useShiftAlt: true,            // Shift + Alt has to be pressed with the command key
     useStopKeyPropagation: false, // Stop command key propagation if consumed
 
     // video control parameters:
@@ -90,9 +94,10 @@ function videoControl() {
         return true // return true - update element style
       }},
 
+    // Chrome policy: Requesting fullscreen has to be handled inside the user-fired action!
     fullscreen: {
       key: 'F',
-      func: () => {
+      func: (videoElement) => {
         // full-screen on/off
         if (!isFullscreen(videoElement)) {
           try {
@@ -111,27 +116,67 @@ function videoControl() {
   // init
   resetValues()
 
-  // get all videos
-  const videos = document.getElementsByTagName("video")
-  if (!(!!videos && videos.length > 0)) {
-    console.log(messages.noVideo)
-    return
-  }
+  { // just to scope videos variable
+    // get all videos
+    const videos = document.getElementsByTagName("video")
+    if (!(!!videos && videos.length > 0)) {
+      console.log(messages.noVideo)
+      return
+    }
   
+    // select video on click
+    console.log(videos)
+    for (const vElem of videos) {
+      console.log(vElem)
+      vElem.addEventListener('click', function(event) {
+        const me = event.target || event.srcElement
+        
+        console.log(me)
+        
+        // get all selected videos (should be only one, but for the safety assume more)
+        const selVideos = document.querySelectorAll(`[${config.attrName}]`)
+        // deselect all selected videos
+        for (const selVideo of selVideos) {
+          setVideoSelection(selVideo, false)
+        }
+        // select me
+        setVideoSelection(me, true)
+      }, false)
+    }
+  }
+
   // add global key listener
   document.addEventListener('keydown', function(event) {
     event = event || window.event
     
     if (config.useShiftAlt && !(event.altKey && event.shiftKey)) return
+    
+    let selVideos = document.querySelectorAll(`[${config.attrName}]`)
+    if (!(!!selVideos && selVideos.length > 0)) {
+      selVideos = document.getElementsByTagName("video")
+      if (!(!!selVideos && selVideos.length > 0)) {
+        console.log(messages.noVideo)
+        return
+      } else {
+        setVideoSelection(selVideos[0], config.attrName, true)
+      }
+    }
 
-    // control only visible videos
+    // control only first visible & selected videos
     let noVisVideo = true
-    for (const v of videos) {
+    for (const v of selVideos) {
       if (isVisible(v)) {
-        if (doCommandOnVideo(v, event.key)) {
+        noVisVideo = false
+        
+        // Chrome policy: handle fullscreen here - inside user-fired event 
+        if (event.key.toUpperCase() === controller.fullscreen.key) {
+          controller.fullscreen.func(v)
+          stopKeyPropagation(event)
+        } else if (doCommandOnVideo(v, event.key)) {
           stopKeyPropagation(event)
         }
-        noVisVideo = false
+
+        break   // should be only one selected video, but break just to be sure
       }
     }
 
@@ -146,7 +191,7 @@ function videoControl() {
       // loop thru keys and invoke func on first key matching pressed key, then break
       Object.entries(controller).every((obj) => {
         if (cmdKey === obj[1].key) {
-          updateStyle = obj[1].func()
+          updateStyle = obj[1].func(videoElement)
           isKeyConsumed = true
           return false      // break
         } else return true  // continue
@@ -157,6 +202,16 @@ function videoControl() {
       }
 
       return isKeyConsumed
+  }
+
+  function setVideoSelection(element, isSelected) {
+    if (isSelected) {
+      element.setAttribute(config.attrName, true)
+      element.style.border = '2px dotted yellow'
+    } else {
+      element.removeAttribute(config.attrName)
+      element.style.removeProperty('border')
+    }
   }
 
   // reset video transform values

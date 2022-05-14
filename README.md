@@ -14,11 +14,12 @@ In `Google Chrome` -> `Settings` -> `Extensions`:
 When someone is presenting on Google Meet:
 
 * Click extension icon to load extension into the active page
-* Use `arrows` to pan
-* Use `+/-` to zoom
-* `0` (zero) resets to default state
-* `F` enables/disables full screen (pan & zoom are ignored)
-* `Escape` exits full screen mode
+* Click on the video element you want to control (otherwise it will use first visible video)
+* Use `Shift` + `Alt` + `WSAD` to pan
+* Use `Shift` + `Alt` + `E/Q` to zoom in/out
+* Use `Shift` + `Alt` + `+/-` to zoom in/out faster
+* `Shift` + `Alt` + `R` resets to default state
+* `Shift` + `Alt` + `F` enables/disables full screen (pan & zoom are ignored)
 * To unload the extension just refresh the page
 
 ## Not only for Google Meet
