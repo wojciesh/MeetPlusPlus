@@ -23,7 +23,7 @@ When someone is presenting on Google Meet:
 * `Shift` + `Alt` + `B` enables/disables yellow border
 * To unload the extension just refresh the page
 
-If you can not select the video element just click on extension icon again to refresh it.
+If you can not select the video element just click on the extension icon again to refresh it.
 
 ## Not only for Google Meet
 
