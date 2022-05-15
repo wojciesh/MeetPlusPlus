@@ -3,6 +3,7 @@ function videoControl() {
     appName: 'Meet++',                          // app name in human readable form
     appNameCanonical: 'MeetPlusPlus',           // app name in canonical form
     attrName: `data-MeetPlusPlus-selected`,     // selected videos data attribute
+    attrUID: `data-MeetPlusPlus-uid`,           // uid data attribute
     cssClassSelected: `MeetPlusPlus-selected`,  // selected videos class name without the dot!
 
     // command keys options:
@@ -136,14 +137,16 @@ function videoControl() {
   // !only one instance allowed
   // if (!!window.mpp_video_transform) return
 
+  // !only once - add css class
+  if (!!!window.mpp_video_transform) {
+    let style = document.createElement('style')
+    style.type = 'text/css';
+    style.innerHTML = `.${config.cssClassSelected} { border: 4px dashed rgba(224,224,0,0.62); }`
+    document.getElementsByTagName('head')[0].appendChild(style)  
+  }
+
   // init
   resetValues()
-
-  // add css class
-  let style = document.createElement('style')
-  style.type = 'text/css';
-  style.innerHTML = `.${config.cssClassSelected} { border: 4px dashed rgba(224,224,0,0.62); }`
-  document.getElementsByTagName('head')[0].appendChild(style)
 
   for (let elem of document.querySelectorAll('*')) {
     elem.removeEventListener("click", selectVideo)
@@ -159,8 +162,17 @@ function videoControl() {
     
     if (config.useShiftAlt && !(event.altKey && event.shiftKey)) return
     
-    // control only first selected & visible video
-    const selVideo = getSelectedVideo()
+    // control first selected & visible video
+    let selVideo = getSelectedVisibleVideo()
+    if (!!!selVideo) {
+      // no selected visible video - find any visible video on the page
+      selVideo = findVisibleVideoInside(document.getElementsByTagName("body")[0])
+      if (!!selVideo) {
+        // select it
+        setVideoSelection(selVideo, true)
+      }
+    }
+
     if (!!selVideo) {
       // init if needed
       initValuesIfNone(selVideo)
@@ -186,7 +198,7 @@ function videoControl() {
       return selVideos
   }
   
-  function getSelectedVideo() {
+  function getSelectedVisibleVideo() {
     return [...getAllSelectedVideos()].find(v => isVisible(v))
   }
 
@@ -217,7 +229,7 @@ function videoControl() {
 
     // deselect all selected videos
     // get all selected videos (should be only one, but for the safety assume more)
-    const selVideos = document.querySelectorAll(`[${config.attrName}]`)
+    const selVideos = getAllSelectedVideos()
     for (const selVideo of selVideos) {
       setVideoSelection(selVideo, false)
     }
@@ -240,21 +252,21 @@ function videoControl() {
     
     // select me
     if (me) setVideoSelection(me, true)
+  }
 
-    function findVisibleVideoInside(containerElement) {
-      if (containerElement.tagName.toUpperCase() !== "VIDEO") {
-        const myVideos = containerElement.getElementsByTagName("video")
-        if (!(!!myVideos && myVideos.length > 0)) {
-          containerElement = null  // no video under me
-        } else {
-          containerElement = [...myVideos].find(v => isVisible(v))
-          if (!!!containerElement) {
-            containerElement = null  // no visible video under me
-          }
+  function findVisibleVideoInside(containerElement) {
+    if (containerElement.tagName.toUpperCase() !== "VIDEO") {
+      const myVideos = containerElement.getElementsByTagName("video")
+      if (!(!!myVideos && myVideos.length > 0)) {
+        containerElement = null  // no video under me
+      } else {
+        containerElement = [...myVideos].find(v => isVisible(v))
+        if (!!!containerElement) {
+          containerElement = null  // no visible video under me
         }
       }
-      return containerElement
     }
+    return containerElement
   }
 
   function setVideoSelection(element, isSelected) {
@@ -276,7 +288,7 @@ function videoControl() {
       initValuesIfNone(videoElement)
     }
     else
-      window.mpp_video_transform = []
+      window.mpp_video_transform = window.mpp_video_transform || []
   }
 
   function initValuesIfNone(videoElement) {
@@ -289,7 +301,20 @@ function videoControl() {
   }
 
   function getUID(videoElement) {
-    return videoElement?.dataset?.uid // !valid only for Google Meet video elements!
+    if (!!!videoElement) return "null"
+    
+    // !this uid is valid only for Google Meet video elements!
+    // if ('uid' in videoElement.dataset) {
+    //   return videoElement.dataset.uid
+    // }
+
+    // universal UID
+    let uid = videoElement.getAttribute(config.attrUID)
+    if (!uid) {
+      uid = self.crypto.randomUUID()
+      videoElement.setAttribute(config.attrUID, uid)
+    }
+    return uid
   }
 
   // checks if element is currently full screen
