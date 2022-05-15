@@ -1,8 +1,9 @@
 function videoControl() {
   const config = {
-    appName: 'Meet++',
-    appNameCanonical: 'MeetPlusPlus',
-    attrName: `data-MeetPlusPlus-selected`,
+    appName: 'Meet++',                          // app name in human readable form
+    appNameCanonical: 'MeetPlusPlus',           // app name in canonical form
+    attrName: `data-MeetPlusPlus-selected`,     // selected videos data attribute
+    cssClassSelected: `MeetPlusPlus-selected`,  // selected videos class name without the dot!
 
     // command keys options:
     useShiftAlt: true,            // Shift + Alt has to be pressed with the command key
@@ -11,7 +12,10 @@ function videoControl() {
     // video control parameters:
     deltaPan: 1,      // panning delta (position is <-100%, 100> in both axes)
     deltaZoom: 0.1,   // zooming delta (zoom is a multiplier in range <deltaZoom, ...>)
-    fastZoomMul: 3.0  // deltaZoom multiplier for fast zooming
+    fastZoomMul: 3.0, // deltaZoom multiplier for fast zooming
+
+    // user changeable vars:
+    useBorder: true,  // show border on selected videos
   }
   
   // all messages
@@ -25,72 +29,88 @@ function videoControl() {
   // !controller keys are UPPERCASE!
   // !func returns bool. Returning true updates video element style.
   const controller = {
+    useBorder: {
+      key: 'B',
+      func: (videoElement) => {
+        // change state
+        config.useBorder = !config.useBorder
+        // update videos
+        let all = getAllSelectedVideos()
+        all.forEach(v => {
+          if (config.useBorder)
+            v.classList.add(config.cssClassSelected)
+          else
+            v.classList.remove(config.cssClassSelected)
+        })
+        return false // return false - do NOT update element style
+      }},
+
     panUp: {
       key: 'W',
-      func: () => {
-        window.video_transform.panY += config.deltaPan
-        window.video_transform.panY = Math.min(100, window.video_transform.panY)
+      func: (videoElement) => {
+        window.mpp_video_transform[getUID(videoElement)].panY += config.deltaPan
+        window.mpp_video_transform[getUID(videoElement)].panY = Math.min(100, window.mpp_video_transform[getUID(videoElement)].panY)
         return true // return true - update element style
       }},
 
     panDown: {
       key: 'S',
-      func: () => {
-        window.video_transform.panY -= config.deltaPan
-        window.video_transform.panY = Math.max(-100, window.video_transform.panY)
+      func: (videoElement) => {
+        window.mpp_video_transform[getUID(videoElement)].panY -= config.deltaPan
+        window.mpp_video_transform[getUID(videoElement)].panY = Math.max(-100, window.mpp_video_transform[getUID(videoElement)].panY)
         return true // return true - update element style
       }},
     
     panLeft: {
       key: 'A',
-      func: () => {
-        window.video_transform.panX += config.deltaPan
-        window.video_transform.panX = Math.min(100, window.video_transform.panX)
+      func: (videoElement) => {
+        window.mpp_video_transform[getUID(videoElement)].panX += config.deltaPan
+        window.mpp_video_transform[getUID(videoElement)].panX = Math.min(100, window.mpp_video_transform[getUID(videoElement)].panX)
         return true // return true - update element style
       }},
 
     panRight: {
       key: 'D',
-      func: () => {
-        window.video_transform.panX -= config.deltaPan
-        window.video_transform.panX = Math.max(-100, window.video_transform.panX)
+      func: (videoElement) => {
+        window.mpp_video_transform[getUID(videoElement)].panX -= config.deltaPan
+        window.mpp_video_transform[getUID(videoElement)].panX = Math.max(-100, window.mpp_video_transform[getUID(videoElement)].panX)
         return true // return true - update element style
       }},
 
     zoomInFast: {
       key: '+',
-      func: () => {
-        window.video_transform.zoom += config.deltaZoom * config.fastZoomMul
+      func: (videoElement) => {
+        window.mpp_video_transform[getUID(videoElement)].zoom += config.deltaZoom * config.fastZoomMul
         return true // return true - update element style
       }},
 
     zoomIn: {
       key: 'E',
-      func: () => {
-        window.video_transform.zoom += config.deltaZoom
+      func: (videoElement) => {
+        window.mpp_video_transform[getUID(videoElement)].zoom += config.deltaZoom
         return true // return true - update element style
       }},
 
     zoomOutFast: {
       key: '-',
-      func: () => {
-        window.video_transform.zoom -= config.deltaZoom * config.fastZoomMul
-        window.video_transform.zoom = Math.max(config.deltaZoom, window.video_transform.zoom)
+      func: (videoElement) => {
+        window.mpp_video_transform[getUID(videoElement)].zoom -= config.deltaZoom * config.fastZoomMul
+        window.mpp_video_transform[getUID(videoElement)].zoom = Math.max(config.deltaZoom, window.mpp_video_transform[getUID(videoElement)].zoom)
         return true // return true - update element style
       }},
 
     zoomOut: {
       key: 'Q',
-      func: () => {
-        window.video_transform.zoom -= config.deltaZoom
-        window.video_transform.zoom = Math.max(config.deltaZoom, window.video_transform.zoom)
+      func: (videoElement) => {
+        window.mpp_video_transform[getUID(videoElement)].zoom -= config.deltaZoom
+        window.mpp_video_transform[getUID(videoElement)].zoom = Math.max(config.deltaZoom, window.mpp_video_transform[getUID(videoElement)].zoom)
         return true // return true - update element style
       }},
 
     reset: {
       key: 'R',
-      func: () => {
-        resetValues()
+      func: (videoElement) => {
+        resetValues(videoElement)
         return true // return true - update element style
       }},
 
@@ -111,77 +131,64 @@ function videoControl() {
         return false  // return false - do NOT update element style
       }},
   }
+
   
+  // !only one instance allowed
+  // if (!!window.mpp_video_transform) return
 
   // init
   resetValues()
 
-  { // just to scope videos variable
-    // get all videos
-    const videos = document.getElementsByTagName("video")
-    if (!(!!videos && videos.length > 0)) {
-      console.log(messages.noVideo)
-      return
-    }
-  
-    // select video on click
-    console.log(videos)
-    for (const vElem of videos) {
-      console.log(vElem)
-      vElem.addEventListener('click', function(event) {
-        const me = event.target || event.srcElement
-        
-        console.log(me)
-        
-        // get all selected videos (should be only one, but for the safety assume more)
-        const selVideos = document.querySelectorAll(`[${config.attrName}]`)
-        // deselect all selected videos
-        for (const selVideo of selVideos) {
-          setVideoSelection(selVideo, false)
-        }
-        // select me
-        setVideoSelection(me, true)
-      }, false)
-    }
+  // add css class
+  let style = document.createElement('style')
+  style.type = 'text/css';
+  style.innerHTML = `.${config.cssClassSelected} { border: 4px dashed rgba(224,224,0,0.62); }`
+  document.getElementsByTagName('head')[0].appendChild(style)
+
+  for (let elem of document.querySelectorAll('*')) {
+    elem.removeEventListener("click", selectVideo)
+    elem.addEventListener("click", selectVideo)
   }
 
   // add global key listener
-  document.addEventListener('keydown', function(event) {
+  document.removeEventListener('keydown', onKeyDown)
+  document.addEventListener('keydown', onKeyDown)
+  
+  function onKeyDown(event) {
     event = event || window.event
     
     if (config.useShiftAlt && !(event.altKey && event.shiftKey)) return
     
-    let selVideos = document.querySelectorAll(`[${config.attrName}]`)
+    // control only first selected & visible video
+    const selVideo = getSelectedVideo()
+    if (!!selVideo) {
+      // init if needed
+      initValuesIfNone(selVideo)
+
+      let cmdKey = event.key.toUpperCase()
+
+      // Chrome policy: handle fullscreen here - inside user-fired event 
+      if (cmdKey === controller.fullscreen.key) {
+        controller.fullscreen.func(selVideo)
+        stopKeyPropagation(event)
+      } else if (doCommandOnVideo(selVideo, cmdKey)) {
+        stopKeyPropagation(event)
+      }
+    } else console.log(messages.noVisibleVideo)
+  }
+
+  function getAllSelectedVideos() {
+    const selVideos = document.querySelectorAll(`[${config.attrName}]`)
     if (!(!!selVideos && selVideos.length > 0)) {
-      selVideos = document.getElementsByTagName("video")
-      if (!(!!selVideos && selVideos.length > 0)) {
-        console.log(messages.noVideo)
-        return
-      } else {
-        setVideoSelection(selVideos[0], config.attrName, true)
-      }
-    }
-
-    // control only first visible & selected videos
-    let noVisVideo = true
-    for (const v of selVideos) {
-      if (isVisible(v)) {
-        noVisVideo = false
-        
-        // Chrome policy: handle fullscreen here - inside user-fired event 
-        if (event.key.toUpperCase() === controller.fullscreen.key) {
-          controller.fullscreen.func(v)
-          stopKeyPropagation(event)
-        } else if (doCommandOnVideo(v, event.key)) {
-          stopKeyPropagation(event)
-        }
-
-        break   // should be only one selected video, but break just to be sure
-      }
-    }
-
-    if (noVisVideo) console.log(messages.noVisibleVideo)
-  })
+      console.log(messages.noVideo)
+      return []
+    } else
+      return selVideos
+  }
+  
+  function getSelectedVideo() {
+    return [...getAllSelectedVideos()].find(v => isVisible(v))
+  }
 
   function doCommandOnVideo(videoElement, cmdKey) {
       let isKeyConsumed = false
@@ -198,29 +205,91 @@ function videoControl() {
       })
       
       if (updateStyle) {
-        videoElement.style.transform = `scale(${window.video_transform.zoom}) translate(${window.video_transform.panX}%, ${window.video_transform.panY}%)`
+        videoElement.style.transform = `scale(${window.mpp_video_transform[getUID(videoElement)].zoom}) translate(${window.mpp_video_transform[getUID(videoElement)].panX}%, ${window.mpp_video_transform[getUID(videoElement)].panY}%)`
       }
 
       return isKeyConsumed
   }
 
+  function selectVideo(event) {
+    // fire only once
+    if (this !== event.target) return
+
+    // deselect all selected videos
+    // get all selected videos (should be only one, but for the safety assume more)
+    const selVideos = document.querySelectorAll(`[${config.attrName}]`)
+    for (const selVideo of selVideos) {
+      setVideoSelection(selVideo, false)
+    }
+    
+    let me = this
+    if (me.tagName.toUpperCase() !== "VIDEO") {
+      // find video if needed
+      const allAtMousePos = document.elementsFromPoint(event.pageX, event.pageY)
+      me = allAtMousePos?.find(e => 
+            e.localName.toUpperCase() === "VIDEO" && isVisible(e)) 
+            ?? null
+
+      if (!me && !!allAtMousePos) {
+        for (let el of allAtMousePos) {
+          me = findVisibleVideoInside(el)
+          if (!!me) break
+        }
+      }
+    }
+    
+    // select me
+    if (me) setVideoSelection(me, true)
+
+    function findVisibleVideoInside(containerElement) {
+      if (containerElement.tagName.toUpperCase() !== "VIDEO") {
+        const myVideos = containerElement.getElementsByTagName("video")
+        if (!(!!myVideos && myVideos.length > 0)) {
+          containerElement = null  // no video under me
+        } else {
+          containerElement = [...myVideos].find(v => isVisible(v))
+          if (!!!containerElement) {
+            containerElement = null  // no visible video under me
+          }
+        }
+      }
+      return containerElement
+    }
+  }
+
   function setVideoSelection(element, isSelected) {
     if (isSelected) {
       element.setAttribute(config.attrName, true)
-      element.style.border = '2px dotted yellow'
+      if (config.useBorder) element.classList.add(config.cssClassSelected)
+      // element.style.border = '2px dotted yellow'
     } else {
+      // element.style.removeProperty('border')
+      element.classList.remove(config.cssClassSelected)
       element.removeAttribute(config.attrName)
-      element.style.removeProperty('border')
     }
   }
 
   // reset video transform values
-  function resetValues() {
-    window.video_transform = {
-      panX: 0,
-      panY: 0,
-      zoom: 1.0,
+  function resetValues(videoElement) {
+    if (!!videoElement) {
+      window.mpp_video_transform[getUID(videoElement)] = null
+      initValuesIfNone(videoElement)
     }
+    else
+      window.mpp_video_transform = []
+  }
+
+  function initValuesIfNone(videoElement) {
+    window.mpp_video_transform[getUID(videoElement)] = 
+      window.mpp_video_transform[getUID(videoElement)] || {
+        panX: 0, 
+        panY: 0, 
+        zoom: 1.0 
+      }
+  }
+
+  function getUID(videoElement) {
+    return videoElement?.dataset?.uid // !valid only for Google Meet video elements!
   }
 
   // checks if element is currently full screen
