@@ -4,12 +4,12 @@
 
 ## Install
 
-In `Google Chrome` -> `Settings` -> `Extensions`:
+In `Google Chrome` open `chrome://extensions` or go to menu `Settings` -> `Extensions`, then:
 
 1. Enable `Developer mode`
 2. Click on `Load Unpacked` and select `src` folder
 
-## Uage
+## Usage
 
 When someone is presenting on Google Meet:
 
