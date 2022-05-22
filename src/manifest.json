@@ -2,8 +2,14 @@
   "manifest_version": 3,
   "name": "Meet++",
   "author": "Wojciech Warpechowski",
-  "version": "1.0-RC1",
+  "version": "1.0-RC2",
   "description": "Zoom, pan and full-screen to improve presentation viewing on Google Meet. Click on the extension icon, then press `Shift` + `Alt` and: `WSAD` to pan, `E/Q` or `+/-` to zoom, `F` for full-screen on/off, `R` to reset, `B` to border on/off. BTW. It also works for videos on any page (not only on Google Meet)!",
+  "icons": {
+    "16": "icon16.png",
+    "32": "icon32.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  },
   "permissions": [
     "activeTab",
     "scripting"
